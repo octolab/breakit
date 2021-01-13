@@ -1,6 +1,6 @@
-> # 🧩 Tool
+> # ⏲ breakit
 >
-> Template for typical Go tool.
+> Flexible mechanism to execute commands for a limited time.
 
 [![Build][build.icon]][build.page]
 [![Documentation][docs.icon]][docs.page]
@@ -12,7 +12,28 @@
 ## 💡 Idea
 
 ```bash
-$ tool do action
+$ date
+# Thu Jan  7 21:02:21
+$ breakit after 10m -- server run --port=8080
+$ breakit ps
+# +--------------------------+----------------------------+----------+----------+
+# | Process                  | Status                     | Since    | Until    |
+# +--------------------------+----------------------------+----------+----------+
+# | server run --port=8080   | exit 1; panic: database... | 21:02:36 | -        |
+# +--------------------------+----------------------------+----------+----------+
+# |                          |                            |    Total |        1 |
+# +--------------------------+----------------------------+----------+----------+
+$ breakit after 10m -- database run --port=5432
+$ breakit after 10m delay 5s -- server run --port=8080
+$ breakit ps
+# +--------------------------+----------------------------+----------+----------+
+# | Process                  | Status                     | Since    | Until    |
+# +--------------------------+----------------------------+----------+----------+
+# | database run --port=5432 | running                    | 21:04:09 | 21:14:09 |
+# | server run --port=8080   | delayed                    | 21:04:30 | 21:14:25 |
+# +--------------------------+----------------------------+----------+----------+
+# |                          |                            |    Total |        2 |
+# +--------------------------+----------------------------+----------+----------+
 ```
 
 A full description of the idea is available [here][design.page].
@@ -62,27 +83,23 @@ $ :binary completion bash|fish|powershell|zsh > /path/to/completions/...
 $ source <(:binary completion bash|fish|powershell|zsh)
 ```
 
-## 🤲 Outcomes
-
-...
-
 <p align="right">made with ❤️ for everyone</p>
 
 [awesome.icon]:     https://awesome.re/mentioned-badge.svg
-[build.page]:       https://travis-ci.com/:owner/:repository
-[build.icon]:       https://travis-ci.com/:owner/:repository.svg?branch=master
-[coverage.page]:    https://codeclimate.com/github/:owner/:repository/test_coverage
+[build.page]:       https://travis-ci.com/octolab/breakit
+[build.icon]:       https://travis-ci.com/octolab/breakit.svg?branch=master
+[coverage.page]:    https://codeclimate.com/github/octolab/breakit/test_coverage
 [coverage.icon]:    https://api.codeclimate.com/v1/badges/c570179a9335c747e77c/test_coverage
 [design.page]:      https://www.notion.so/33715348cc114ea79dd350a25d16e0b0?r=0b753cbf767346f5a6fd51194829a2f3
-[docs.page]:        https://pkg.go.dev/:module/:version
+[docs.page]:        https://pkg.go.dev/go.octolab.org/toolset/breakit
 [docs.icon]:        https://img.shields.io/badge/docs-pkg.go.dev-blue
-[mirror.page]:      https://bitbucket.org/kamilsk/go-tool
+[mirror.page]:      https://bitbucket.org/kamilsk/breakit
 [mirror.icon]:      https://img.shields.io/badge/mirror-bitbucket-blue
-[promo.page]:       https://github.com/:owner/:repository
-[quality.page]:     https://goreportcard.com/report/:module
-[quality.icon]:     https://goreportcard.com/badge/go.octolab.org
+[promo.page]:       https://github.com/octolab/breakit
+[quality.page]:     https://goreportcard.com/report/go.octolab.org/toolset/breakit
+[quality.icon]:     https://goreportcard.com/badge/go.octolab.org/toolset/breakit
 [template.page]:    https://github.com/octomation/go-tool
 [template.icon]:    https://img.shields.io/badge/template-go--tool-blue
 
-[_]:                https://img.shields.io/sourcegraph/rrc/github.com/:owner/:repository
+[_]:                https://img.shields.io/sourcegraph/rrc/github.com/octolab/breakit
 [egg]:              https://github.com/kamilsk/egg
