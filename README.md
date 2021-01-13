@@ -54,25 +54,21 @@ $ egg tools add github.com/:owner/:repository@:version
 
 > [egg][] is an `extended go get`.
 
-### Bash and Zsh completions
+### Shell completions
 
 ```bash
-$ :binary completion bash > /path/to/bash_completion.d/:binary.sh
-$ :binary completion zsh  > /path/to/zsh-completions/_:binary.zsh
-# or autodetect
-$ source <(:binary completion)
+$ :binary completion bash|fish|powershell|zsh > /path/to/completions/...
+# or
+$ source <(:binary completion bash|fish|powershell|zsh)
 ```
-
-> See `kubectl` [documentation](https://kubernetes.io/docs/tasks/tools/install-kubectl/#enabling-shell-autocompletion).
 
 ## 🤲 Outcomes
 
 ...
 
----
+<p align="right">made with ❤️ for everyone</p>
 
-made with ❤️ for everyone
-
+[awesome.icon]:     https://awesome.re/mentioned-badge.svg
 [build.page]:       https://travis-ci.com/:owner/:repository
 [build.icon]:       https://travis-ci.com/:owner/:repository.svg?branch=master
 [coverage.page]:    https://codeclimate.com/github/:owner/:repository/test_coverage
@@ -80,12 +76,13 @@ made with ❤️ for everyone
 [design.page]:      https://www.notion.so/33715348cc114ea79dd350a25d16e0b0?r=0b753cbf767346f5a6fd51194829a2f3
 [docs.page]:        https://pkg.go.dev/:module/:version
 [docs.icon]:        https://img.shields.io/badge/docs-pkg.go.dev-blue
+[mirror.page]:      https://bitbucket.org/kamilsk/go-tool
+[mirror.icon]:      https://img.shields.io/badge/mirror-bitbucket-blue
 [promo.page]:       https://github.com/:owner/:repository
 [quality.page]:     https://goreportcard.com/report/:module
 [quality.icon]:     https://goreportcard.com/badge/go.octolab.org
 [template.page]:    https://github.com/octomation/go-tool
 [template.icon]:    https://img.shields.io/badge/template-go--tool-blue
-[mirror.page]:      https://bitbucket.org/kamilsk/go-tool
-[mirror.icon]:      https://img.shields.io/badge/mirror-bitbucket-blue
 
+[_]:                https://img.shields.io/sourcegraph/rrc/github.com/:owner/:repository
 [egg]:              https://github.com/kamilsk/egg

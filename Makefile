@@ -4,11 +4,19 @@
 GIT_HOOKS     = post-merge pre-commit pre-push
 GO_VERSIONS   = 1.14 1.15
 GO111MODULE   = on
+SHELL         = /bin/bash -euo pipefail
 
-OS    := $(shell uname -s | tr '[:upper:]' '[:lower:]')
+AT    := @
 ARCH  := $(shell uname -m | tr '[:upper:]' '[:lower:]')
+OS    := $(shell uname -s | tr '[:upper:]' '[:lower:]')
+DATE  := $(shell date +%Y-%m-%dT%T%Z)
 
 SHELL ?= /bin/bash -euo pipefail
+
+verbose:
+	$(eval AT :=)
+	@echo > /dev/null
+.PHONY: verbose
 
 todo:
 	@grep \
@@ -20,20 +28,69 @@ todo:
 .PHONY: todo
 
 rmdir:
-	@for dir in `git ls-files --others --exclude-standard --directory`; do \
+	$(AT) for dir in `git ls-files --others --exclude-standard --directory`; do \
 		find $${dir%%/} -depth -type d -empty | xargs rmdir; \
 	done
 .PHONY: rmdir
 
-GO111MODULE ?= on
+COMMIT  := $(shell git rev-parse --verify HEAD)
+RELEASE := $(shell git describe --tags 2>/dev/null | rev | cut -d - -f3- | rev)
+
+ifdef GIT_HOOKS
+
+hooks: unhook
+	$(AT) for hook in $(GIT_HOOKS); do cp githooks/$$hook .git/hooks/; done
+.PHONY: hooks
+
+unhook:
+	@ls .git/hooks | grep -v .sample | sed 's|.*|.git/hooks/&|' | xargs rm -f || true
+.PHONY: unhook
+
+define hook_tpl
+$(1):
+	@githooks/$(1)
+.PHONY: $(1)
+endef
+
+render_hook_tpl = $(eval $(call hook_tpl,$(hook)))
+$(foreach hook,$(GIT_HOOKS),$(render_hook_tpl))
+
+endif
+
+git-check:
+	$(AT) git diff --exit-code >/dev/null
+	$(AT) git diff --cached --exit-code >/dev/null
+	$(AT) ! git ls-files --others --exclude-standard | grep -q ^
+.PHONY: git-check
+
+export GOBIN := $(PWD)/bin/$(OS)/$(ARCH)
+export PATH  := $(GOBIN):$(PATH)
+
 GOFLAGS     ?= -mod=
+GOPIPE      ?= $(GOBIN)/panicparse
 GOPRIVATE   ?= go.octolab.net
 GOPROXY     ?= direct
+GOTEST      ?= $(GOBIN)/gotest
+GOTRACEBACK ?= all
 LOCAL       ?= $(MODULE)
-MODULE      ?= `GO111MODULE=on go list -m $(GOFLAGS)`
-PACKAGES    ?= `GO111MODULE=on go list $(GOFLAGS) ./...`
+MODULE      ?= `go list -m $(GOFLAGS)`
+PACKAGES    ?= `go list $(GOFLAGS) ./...`
 PATHS       ?= $(shell echo $(PACKAGES) | sed -e "s|$(MODULE)/||g" | sed -e "s|$(MODULE)|$(PWD)/*.go|g")
 TIMEOUT     ?= 1s
+
+ifeq (, $(wildcard $(GOTEST)))
+	GOTEST = $(shell command -v gotest)
+endif
+ifeq (, $(GOTEST))
+	GOTEST = go test
+endif
+
+ifeq (, $(wildcard $(GOPIPE)))
+	GOPIPE = $(shell command -v panicparse)
+endif
+ifneq (, $(GOPIPE))
+	GOPIPE := 2>&1|$(GOPIPE)
+endif
 
 ifeq (, $(PACKAGES))
 	PACKAGES = $(MODULE)
@@ -43,24 +100,24 @@ ifeq (, $(PATHS))
 	PATHS = .
 endif
 
-export GO111MODULE := $(GO111MODULE)
 export GOFLAGS     := $(GOFLAGS)
 export GOPRIVATE   := $(GOPRIVATE)
 export GOPROXY     := $(GOPROXY)
+export GOTRACEBACK := $(GOTRACEBACK)
 
 go-env:
-	@echo "GO111MODULE: `go env GO111MODULE`"
 	@echo "GOFLAGS:     $(strip `go env GOFLAGS`)"
+	@echo "GOPIPE:      $(GOPIPE)"
 	@echo "GOPRIVATE:   $(strip `go env GOPRIVATE`)"
 	@echo "GOPROXY:     $(strip `go env GOPROXY`)"
+	@echo "GOTEST:      $(GOTEST)"
+	@echo "GOTRACEBACK: $(GOTRACEBACK)"
 	@echo "LOCAL:       $(LOCAL)"
 	@echo "MODULE:      $(MODULE)"
 	@echo "PACKAGES:    $(PACKAGES)"
 	@echo "PATHS:       $(strip $(PATHS))"
 	@echo "TIMEOUT:     $(TIMEOUT)"
 .PHONY: go-env
-
-export GOBIN := $(PWD)/bin/$(OS)/$(ARCH)
 
 deps-check:
 	@go mod verify
@@ -86,27 +143,26 @@ deps-tidy:
 
 deps-update: selector = '{{if not (or .Main .Indirect)}}{{.Path}}{{end}}'
 deps-update:
-	@if command -v egg > /dev/null; then \
-		packages="`egg deps list`"; \
+	$(AT) if command -v egg > /dev/null; then \
+		packages="`egg deps list | tr ' ' '\n' | sed -e 's/$$/@latest/'`"; \
 	else \
-		packages="`go list -f $(selector) -m -mod=readonly all`"; \
+		packages="`go list -f $(selector) -m -mod=readonly all | sed -e 's/$$/@latest/'`"; \
 	fi; \
+	if [[ "$$packages" = "@latest" ]]; then exit; fi; \
 	if [[ "`go version`" == *1.1[1-3]* ]]; then \
-		go get -d -mod= -u $$packages; \
+		go get -d -mod= $$packages; \
 	else \
-		go get -d -u $$packages; \
+		go get -d $$packages; \
 	fi; \
 	if [[ "`go env GOFLAGS`" =~ -mod=vendor ]]; then go mod vendor; fi
 .PHONY: deps-update
 
-deps-update-all:
-	@if [[ "`go version`" == *1.1[1-3]* ]]; then \
-		go get -d -mod= -u ./...; \
-	else \
-		go get -d -u ./...; \
-	fi; \
-	if [[ "`go env GOFLAGS`" =~ -mod=vendor ]]; then go mod vendor; fi
-.PHONY: deps-update-all
+GODOC_HOST ?= localhost:6060
+
+go-docs:
+	@(sleep 2 && open http://$(GODOC_HOST)/pkg/$(LOCAL)/) &
+	@godoc -http=$(GODOC_HOST)
+.PHONY: go-docs
 
 go-fmt:
 	@if command -v goimports > /dev/null; then \
@@ -120,72 +176,76 @@ go-generate:
 	@go generate $(PACKAGES)
 .PHONY: go-generate
 
+go-pkg:
+	@open https://pkg.go.dev/$(MODULE)@$(RELEASE)
+.PHONY: go-pkg
+
 lint:
 	@golangci-lint run ./...
 	@looppointer ./...
 .PHONY: lint
 
-GODOC_HOST ?= localhost:6060
-
-docs:
-	@(sleep 2 && open http://$(GODOC_HOST)/pkg/$(LOCAL)/) &
-	@godoc -http=$(GODOC_HOST)
-.PHONY: docs
-
 test:
-	@go test -race -timeout $(TIMEOUT) $(PACKAGES)
+	@$(GOTEST) -race -timeout $(TIMEOUT) $(PACKAGES) $(GOPIPE)
 .PHONY: test
 
 test-clean:
 	@go clean -testcache
 .PHONY: test-clean
 
+test-quick: GOTAGS = integration,tools
 test-quick:
-	@go test -timeout $(TIMEOUT) $(PACKAGES)
+	@go test -run ^Fake$$ -tags $(GOTAGS) ./... | { grep -v 'no tests to run' || true; }
+	@$(GOTEST) -timeout $(TIMEOUT) $(PACKAGES) $(GOPIPE)
 .PHONY: test-quick
 
+test-verbose:
+	@$(GOTEST) -race -timeout $(TIMEOUT) -v $(PACKAGES) $(GOPIPE)
+.PHONY: test-verbose
+
 test-with-coverage:
-	@go test \
+	@$(GOTEST) \
 		-cover \
 		-covermode atomic \
 		-coverprofile c.out \
 		-race \
 		-timeout $(TIMEOUT) \
-		$(PACKAGES) | column -t | sort -r
+		$(PACKAGES) $(GOPIPE)
 .PHONY: test-with-coverage
 
 test-with-coverage-report: test-with-coverage
 	@go tool cover -html c.out
 .PHONY: test-with-coverage-report
 
+test-integration: GOTAGS = integration
 test-integration:
-	@go test \
+	@$(GOTEST) \
 		-cover \
 		-covermode atomic \
 		-coverprofile integration.out \
 		-race \
-		-tags integration \
-		./... | column -t | sort -r
+		-tags $(GOTAGS) \
+		./... $(GOPIPE)
 .PHONY: test-integration
 
+test-integration-quick: GOTAGS = integration
 test-integration-quick:
-	@go test -tags integration ./...
+	@$(GOTEST) -tags $(GOTAGS) ./... $(GOPIPE)
 .PHONY: test-integration-quick
 
 test-integration-report: test-integration
 	@go tool cover -html integration.out
 .PHONY: test-integration-report
 
-BINARY  ?= `go env GOBIN`/$(shell basename $(MAIN))
-COMMIT  ?= $(shell git rev-parse --verify HEAD)
-DATE    ?= $(shell date +%Y-%m-%dT%T%Z)
+BINARY  ?= $(GOBIN)/$(shell basename $(MAIN))
 LDFLAGS ?= -ldflags "-s -w -X main.commit=$(COMMIT) -X main.date=$(DATE)"
 MAIN    ?= $(MODULE)
 
 build-env:
-	@echo "BINARY:      $(BINARY)"
-	@echo "COMMIT:      $(COMMIT)"
 	@echo "DATE:        $(DATE)"
+	@echo "COMMIT:      $(COMMIT)"
+	@echo "RELEASE:     $(RELEASE)"
+	@echo "BINARY:      $(BINARY)"
 	@echo "LDFLAGS:     $(LDFLAGS)"
 	@echo "MAIN:        $(MAIN)"
 .PHONY: build-env
@@ -225,42 +285,16 @@ tools-env:
 	@echo "TOOLFLAGS:   $(TOOLFLAGS)"
 .PHONY: tools-env
 
+toolset: GOTAGS = tools
 toolset:
-	@( \
+	$(AT) ( \
 		GOFLAGS=$(TOOLFLAGS); \
 		cd tools; \
 		go mod tidy; \
 		if [[ "`go env GOFLAGS`" =~ -mod=vendor ]]; then go mod vendor; fi; \
-		go generate -tags tools tools.go; \
+		go generate -tags $(GOTAGS) tools.go; \
 	)
 .PHONY: toolset
-
-ifdef GIT_HOOKS
-
-hooks: unhook
-	@for hook in $(GIT_HOOKS); do cp githooks/$$hook .git/hooks/; done
-.PHONY: hooks
-
-unhook:
-	@ls .git/hooks | grep -v .sample | sed 's|.*|.git/hooks/&|' | xargs rm -f || true
-.PHONY: unhook
-
-define hook_tpl
-$(1):
-	@githooks/$(1)
-.PHONY: $(1)
-endef
-
-render_hook_tpl = $(eval $(call hook_tpl,$(hook)))
-$(foreach hook,$(GIT_HOOKS),$(render_hook_tpl))
-
-endif
-
-git-check:
-	@git diff --exit-code >/dev/null
-	@git diff --cached --exit-code >/dev/null
-	@! git ls-files --others --exclude-standard | grep -q ^
-.PHONY: git-check
 
 ifdef GO_VERSIONS
 
@@ -278,9 +312,6 @@ render_go_tpl = $(eval $(call go_tpl,$(version)))
 $(foreach version,$(GO_VERSIONS),$(render_go_tpl))
 
 endif
-
-
-export PATH := $(GOBIN):$(PATH)
 
 
 init: deps test lint hooks
@@ -310,5 +341,5 @@ refresh: deps-tidy update deps generate test build
 update: deps-update
 .PHONY: update
 
-verify: deps-check generate git-check lint test
+verify: deps-check generate test lint git-check
 .PHONY: verify
