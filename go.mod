@@ -1,4 +1,4 @@
-module tool
+module go.octolab.org/toolset/breakit
 
 go 1.15
 
