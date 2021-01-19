@@ -78,9 +78,9 @@ $ egg tools add github.com/:owner/:repository@:version
 ### Shell completions
 
 ```bash
-$ :binary completion bash|fish|powershell|zsh > /path/to/completions/...
+$ :binary completion > /path/to/completions/...
 # or
-$ source <(:binary completion bash|fish|powershell|zsh)
+$ source <(:binary completion)
 ```
 
 <p align="right">made with ❤️ for everyone</p>
