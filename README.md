@@ -51,15 +51,15 @@ A full description of the idea is available [here][design.page].
 ### Homebrew
 
 ```bash
-$ brew install :owner/tap/:binary
+$ brew install octolab/tap/breakit
 ```
 
 ### Binary
 
 ```bash
-$ curl -sSfL https://raw.githubusercontent.com/:owner/:repository/master/bin/install | sh
+$ curl -sSfL https://raw.githubusercontent.com/octolab/breakit/master/bin/install | sh
 # or
-$ wget -qO-  https://raw.githubusercontent.com/:owner/:repository/master/bin/install | sh
+$ wget -qO-  https://raw.githubusercontent.com/octolab/breakit/master/bin/install | sh
 ```
 
 > Don't forget about [security](https://www.idontplaydarts.com/2016/04/detecting-curl-pipe-bash-server-side/).
@@ -68,9 +68,9 @@ $ wget -qO-  https://raw.githubusercontent.com/:owner/:repository/master/bin/ins
 
 ```bash
 # use standard go tools
-$ go get github.com/:owner/:repository@:version
+$ go get go.octolab.org/toolset/breakit@latest
 # or use egg tool
-$ egg tools add github.com/:owner/:repository@:version
+$ egg tools add go.octolab.org/toolset/breakit@latest
 ```
 
 > [egg][] is an `extended go get`.
@@ -78,9 +78,9 @@ $ egg tools add github.com/:owner/:repository@:version
 ### Shell completions
 
 ```bash
-$ :binary completion > /path/to/completions/...
+$ breakit completion > /path/to/completions/...
 # or
-$ source <(:binary completion)
+$ source <(breakit completion)
 ```
 
 <p align="right">made with ❤️ for everyone</p>
@@ -101,5 +101,5 @@ $ source <(:binary completion)
 [template.page]:    https://github.com/octomation/go-tool
 [template.icon]:    https://img.shields.io/badge/template-go--tool-blue
 
-[_]:                https://img.shields.io/sourcegraph/rrc/github.com/octolab/breakit
+[_]:                https://img.shields.io/sourcegraph/rrc/go.octolab.org/toolset/breakit
 [egg]:              https://github.com/kamilsk/egg
