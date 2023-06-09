@@ -1,45 +1,39 @@
----
+version: 2
+
 project_name: breakit
 
 archives:
   - id: breakit
+    ids:
+      - breakit
     files:
       - LICENSE
-    format: tar.gz
-    name_template: "{{.Binary}}_{{.Version}}_{{.Os}}-{{.Arch}}"
-    replacements:
-      386: 32bit
-      amd64: 64bit
-      darwin: macOS
-      linux: Linux
+    formats: [tar.gz]
+    name_template: "{{.ProjectName}}_{{.Version}}_{{.Os}}-{{.Arch}}"
 
+# brews is deprecated upstream, but it is the only GoReleaser generator of a
+# Formula (as octopot/indexit and octomation/maintainer). Keep GoReleaser
+# pinned in CI.
 brews:
   - name: breakit
-    caveats:
+    ids: [breakit]
+    # a prerelease tag (vX.Y.Z-rcN) leaves the tap as it is
+    skip_upload: auto
     commit_author:
-      name: Kamil Samigullin
-      email: kamil@samigullin.info
-    description: Flexible mechanism to execute commands for a limited time.
-    folder: Formula
+      use_github_app_token: true
+    description: "Flexible mechanism to execute commands for a limited time."
+    directory: Formula
     homepage: https://github.com/octolab/breakit
-    tap:
+    repository:
       owner: octolab
       name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     install: |
       bin.install "breakit"
-
-      output = Utils.popen_read("#{bin}/breakit completion bash")
-      (bash_completion/"breakit").write output
-
-      output = Utils.popen_read("#{bin}/breakit completion fish")
-      (fish_completion/"breakit.fish").write output
-
-      output = Utils.popen_read("#{bin}/breakit completion zsh")
-      (zsh_completion/"_breakit").write output
-
+      generate_completions_from_executable(bin/"breakit", "completion")
       prefix.install_metafiles
     test: |
-      system "#{bin}/breakit version"
+      system "#{bin}/breakit", "version"
 
 builds:
   - id: breakit
@@ -49,8 +43,8 @@ builds:
     flags:
       - -trimpath
     goarch:
-      - 386
       - amd64
+      - arm64
     goos:
       - darwin
       - linux
@@ -61,6 +55,6 @@ builds:
 checksum: { name_template: checksums.txt }
 
 release:
-  github:
-    owner: octolab
-    name: breakit
+  # the repository comes from the git remote; a prerelease tag (vX.Y.Z-rcN)
+  # is published as a prerelease, never as Latest
+  prerelease: auto
